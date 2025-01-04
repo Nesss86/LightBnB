@@ -1,5 +1,15 @@
+const { Pool } = require("pg");
 const properties = require("./json/properties.json");
 const users = require("./json/users.json");
+
+
+const pool = new Pool({
+  user: "development",
+  password: "development",
+  host: "localhost",
+  database: "lightbnb",
+});
+
 
 /// Users
 
@@ -80,6 +90,7 @@ const addProperty = function (property) {
 };
 
 module.exports = {
+  pool,
   getUserWithEmail,
   getUserWithId,
   addUser,
