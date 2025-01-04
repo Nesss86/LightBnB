@@ -122,19 +122,66 @@ const getAllReservations = function (guest_id, limit = 10) {
  * @return {Promise<[{}]>}  A promise to the properties.
  */
 const getAllProperties = (options, limit = 10) => {
+  const queryParams = [];
+  let queryString = `
+    SELECT properties.*, 
+           AVG(property_reviews.rating) as average_rating
+    FROM properties
+    LEFT JOIN property_reviews ON properties.id = property_reviews.property_id
+  `;
+
+  const conditions = [];
+
+  // Filter by owner_id
+  if (options.owner_id) {
+    queryParams.push(options.owner_id);
+    conditions.push(`owner_id = $${queryParams.length}`);
+  }
+
+  // Filter by price range
+  if (options.minimum_price_per_night) {
+    queryParams.push(Number(options.minimum_price_per_night) * 100);
+    conditions.push(`cost_per_night >= $${queryParams.length}`);
+  }
+
+  if (options.maximum_price_per_night) {
+    queryParams.push(Number(options.maximum_price_per_night) * 100);
+    conditions.push(`cost_per_night <= $${queryParams.length}`);
+  }
+
+  // Add WHERE clause if there are conditions
+  if (conditions.length > 0) {
+    queryString += ` WHERE ${conditions.join(' AND ')}`;
+  }
+
+  // Group by properties.id
+  queryString += ` GROUP BY properties.id`;
+
+  // Filter by minimum rating
+  if (options.minimum_rating) {
+    queryParams.push(Number(options.minimum_rating));
+    queryString += ` HAVING AVG(property_reviews.rating) >= $${queryParams.length}`;
+  }
+
+  // Add ORDER BY and LIMIT
+  queryString += `
+    ORDER BY cost_per_night
+    LIMIT $${queryParams.length + 1};
+  `;
+  queryParams.push(limit);
+
+  console.log(queryString, queryParams);
+
   return pool
-    .query(
-      `SELECT * FROM properties LIMIT $1;`, 
-      [limit] 
-    )
-    .then((result) => {
-      return result.rows; 
-    })
+    .query(queryString, queryParams)
+    .then((result) => result.rows)
     .catch((err) => {
       console.error("Error fetching properties:", err.message);
-      throw err; 
+      throw err;
     });
 };
+
+
 
 /**
  * Add a property to the database
