@@ -83,10 +83,34 @@ const addUser = function (user) {
 /**
  * Get all reservations for a single user.
  * @param {string} guest_id The id of the user.
+ * @param {number} limit The number of results to return (default is 10).
  * @return {Promise<[{}]>} A promise to the reservations.
  */
 const getAllReservations = function (guest_id, limit = 10) {
-  return getAllProperties(null, 2); // This should be updated to fetch reservations from the DB
+  return pool
+    .query(
+      `SELECT 
+          reservations.id AS id,
+          properties.title AS title,
+          properties.cost_per_night,
+          reservations.start_date,
+          AVG(property_reviews.rating) AS average_rating
+       FROM reservations
+       JOIN properties ON reservations.property_id = properties.id
+       LEFT JOIN property_reviews ON properties.id = property_reviews.property_id
+       WHERE reservations.guest_id = $1
+       GROUP BY reservations.id, properties.title, reservations.start_date, properties.cost_per_night
+       ORDER BY reservations.start_date ASC
+       LIMIT $2;`, // SQL query
+      [guest_id, limit] // Parameterized query
+    )
+    .then((result) => {
+      return result.rows; // Return the fetched rows
+    })
+    .catch((err) => {
+      console.error("Error fetching reservations:", err.message);
+      throw err; // Re-throw error
+    });
 };
 
 /// Properties
@@ -94,7 +118,7 @@ const getAllReservations = function (guest_id, limit = 10) {
 /**
  * Get all properties.
  * @param {{}} options An object containing query options.
- * @param {*} limit The number of results to return.
+ * @param {number} limit The number of results to return.
  * @return {Promise<[{}]>}  A promise to the properties.
  */
 const getAllProperties = (options, limit = 10) => {
@@ -118,10 +142,22 @@ const getAllProperties = (options, limit = 10) => {
  * @return {Promise<{}>} A promise to the property.
  */
 const addProperty = function (property) {
-  const propertyId = Object.keys(properties).length + 1;
-  property.id = propertyId;
-  properties[propertyId] = property;
-  return Promise.resolve(property);
+  const { title, description, number_of_bedrooms, number_of_bathrooms, parking_spaces, cost_per_night, thumbnail_photo_url, cover_photo_url, street, city, province, post_code, country, owner_id } = property;
+
+  return pool
+    .query(
+      `INSERT INTO properties (title, description, number_of_bedrooms, number_of_bathrooms, parking_spaces, cost_per_night, thumbnail_photo_url, cover_photo_url, street, city, province, post_code, country, owner_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       RETURNING *;`, // Insert property and return the inserted row
+      [title, description, number_of_bedrooms, number_of_bathrooms, parking_spaces, cost_per_night, thumbnail_photo_url, cover_photo_url, street, city, province, post_code, country, owner_id]
+    )
+    .then((result) => {
+      return result.rows[0]; // Return the newly created property object
+    })
+    .catch((err) => {
+      console.error("Error adding property:", err.message);
+      throw err; // Re-throw error
+    });
 };
 
 module.exports = {
@@ -133,4 +169,5 @@ module.exports = {
   getAllProperties,
   addProperty,
 };
+
 
