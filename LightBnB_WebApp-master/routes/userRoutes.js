@@ -8,18 +8,17 @@ const router = express.Router();
 router.post("/", (req, res) => {
   const user = req.body;
   user.password = bcrypt.hashSync(user.password, 12);
-  
   database
     .addUser(user)
-    .then((newUser) => {
-      if (!newUser) {
-        return res.send({ error: "Failed to create user" });
+    .then((user) => {
+      if (!user) {
+        return res.send({ error: "error" });
       }
 
-      req.session.userId = newUser.id;
+      req.session.userId = user.id;
       res.send("🤗");
     })
-    .catch((e) => res.status(500).send(e));
+    .catch((e) => res.send(e));
 });
 
 // Log a user in
@@ -27,27 +26,24 @@ router.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
 
-  database
-    .getUserWithEmail(email)
-    .then((user) => {
-      if (!user) {
-        return res.send({ error: "No user with that email" });
-      }
+  database.getUserWithEmail(email).then((user) => {
+    if (!user) {
+      return res.send({ error: "no user with that id" });
+    }
 
-      if (!bcrypt.compareSync(password, user.password)) {
-        return res.send({ error: "Incorrect password" });
-      }
+    if (!bcrypt.compareSync(password, user.password)) {
+      return res.send({ error: "error" });
+    }
 
-      req.session.userId = user.id;
-      res.send({
-        user: {
-          name: user.name,
-          email: user.email,
-          id: user.id,
-        },
-      });
-    })
-    .catch((e) => res.status(500).send(e));
+    req.session.userId = user.id;
+    res.send({
+      user: {
+        name: user.name,
+        email: user.email,
+        id: user.id,
+      },
+    });
+  });
 });
 
 // Log a user out
@@ -60,14 +56,14 @@ router.post("/logout", (req, res) => {
 router.get("/me", (req, res) => {
   const userId = req.session.userId;
   if (!userId) {
-    return res.send({ message: "Not logged in" });
+    return res.send({ message: "not logged in" });
   }
 
   database
     .getUserWithId(userId)
     .then((user) => {
       if (!user) {
-        return res.send({ error: "No user with that id" });
+        return res.send({ error: "no user with that id" });
       }
 
       res.send({
@@ -78,8 +74,7 @@ router.get("/me", (req, res) => {
         },
       });
     })
-    .catch((e) => res.status(500).send(e));
+    .catch((e) => res.send(e));
 });
 
 module.exports = router;
-
