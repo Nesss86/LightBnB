@@ -189,23 +189,61 @@ const getAllProperties = (options, limit = 10) => {
  * @return {Promise<{}>} A promise to the property.
  */
 const addProperty = function (property) {
-  const { title, description, number_of_bedrooms, number_of_bathrooms, parking_spaces, cost_per_night, thumbnail_photo_url, cover_photo_url, street, city, province, post_code, country, owner_id } = property;
+  const {
+    title,
+    description,
+    number_of_bedrooms,
+    number_of_bathrooms,
+    parking_spaces,
+    cost_per_night,
+    thumbnail_photo_url,
+    cover_photo_url,
+    street,
+    city,
+    province,
+    post_code,
+    country,
+    owner_id,
+  } = property;
+
+  const queryString = `
+    INSERT INTO properties 
+      (title, description, number_of_bedrooms, number_of_bathrooms, parking_spaces, cost_per_night, 
+       thumbnail_photo_url, cover_photo_url, street, city, province, post_code, country, owner_id)
+    VALUES 
+      ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+    RETURNING *;
+  `;
+
+  const queryParams = [
+    title,
+    description,
+    number_of_bedrooms,
+    number_of_bathrooms,
+    parking_spaces,
+    cost_per_night,
+    thumbnail_photo_url,
+    cover_photo_url,
+    street,
+    city,
+    province,
+    post_code,
+    country,
+    owner_id,
+  ];
 
   return pool
-    .query(
-      `INSERT INTO properties (title, description, number_of_bedrooms, number_of_bathrooms, parking_spaces, cost_per_night, thumbnail_photo_url, cover_photo_url, street, city, province, post_code, country, owner_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-       RETURNING *;`, // Insert property and return the inserted row
-      [title, description, number_of_bedrooms, number_of_bathrooms, parking_spaces, cost_per_night, thumbnail_photo_url, cover_photo_url, street, city, province, post_code, country, owner_id]
-    )
+    .query(queryString, queryParams)
     .then((result) => {
+      console.log("Property added:", result.rows[0]); // Optional: Log the added property
       return result.rows[0]; // Return the newly created property object
     })
     .catch((err) => {
       console.error("Error adding property:", err.message);
-      throw err; // Re-throw error
+      throw err; // Re-throw the error for handling elsewhere
     });
 };
+
 
 module.exports = {
   pool,
